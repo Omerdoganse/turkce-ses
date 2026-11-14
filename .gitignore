@@ -1,0 +1,35 @@
+# --- KİŞİSEL SES VERİLERİ: ASLA YÜKLENMEZ ---
+kayitlar/
+veri_seti/
+dataset/
+wavs/
+*.wav
+*.mp3
+*.flac
+*.ogg
+*.m4a
+*.webm
+
+# --- Eğitilmiş model ve eğitim çıktıları ---
+model/
+modeller/
+egitim/
+checkpoints/
+lightning_logs/
+*.ckpt
+*.onnx
+*.onnx.json
+*.pt
+*.pth
+
+# --- Python / ortam ---
+__pycache__/
+*.pyc
+.venv/
+venv/
+.env
+
+# --- Sistem ---
+Thumbs.db
+desktop.ini
+.DS_Store
