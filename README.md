@@ -13,7 +13,7 @@ Hazır bir Türkçe [Piper](https://github.com/rhasspy/piper) modeli, kendi ses 
 
 | # | Adım | Durum |
 |---|------|-------|
-| 1 | Okunacak Türkçe cümle listesi (`cumleler.js`, ilk 200 cümle) | ✅ |
+| 1 | Okunacak Türkçe cümle listesi (`kayit.html` içinde, ilk 200 cümle) | ✅ |
 | 2 | Kayıt programı (`kayit.html`, Chrome/Edge ile açılır) | ✅ |
 | 3 | Kurulum (WSL2, Python, Piper, CUDA) | ⏳ |
 | 4 | Ses kayıtları (1–2 saat) | ⏳ |
