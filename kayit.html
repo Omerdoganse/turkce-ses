@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<title>Ses Kayıt</title>
+<style>
+  body { font-family: "Segoe UI", sans-serif; background: #14161a; color: #eee; margin: 0; padding: 24px; text-align: center; }
+  h1 { font-size: 20px; color: #9ab; }
+  #cumle { font-size: 34px; line-height: 1.4; margin: 40px auto; max-width: 900px; min-height: 140px; }
+  #durum { font-size: 18px; color: #9ab; min-height: 28px; }
+  button { font-size: 18px; padding: 12px 22px; margin: 6px; border: 0; border-radius: 8px; background: #2d6cdf; color: #fff; cursor: pointer; }
+  button:disabled { background: #444; color: #888; cursor: default; }
+  #kayitBtn.aktif { background: #d33; }
+  #seviye { width: 400px; height: 14px; }
+  .ipucu { color: #789; font-size: 14px; margin-top: 30px; line-height: 1.8; }
+  audio { margin-top: 14px; }
+</style>
+</head>
+<body>
+<h1>Türkçe Ses Kayıt Programı</h1>
+<div id="baslangic">
+  <p>Önce kayıtların kaydedileceği <b>kayitlar</b> klasörünü seçin.</p>
+  <button id="klasorBtn">Klasör seç ve başla</button>
+</div>
+<div id="calisma" hidden>
+  <div id="durum"></div>
+  <div id="cumle"></div>
+  <meter id="seviye" min="0" max="1" low="0.05" high="0.9" optimum="0.4"></meter><br>
+  <button id="kayitBtn">● Kaydı başlat (Boşluk)</button>
+  <button id="kaydetBtn" disabled>✔ Kaydet ve sonraki (Enter)</button>
+  <button id="atlaBtn">Atla →</button>
+  <button id="geriBtn">← Önceki</button><br>
+  <audio id="oynat" controls hidden></audio>
+  <div class="ipucu">
+    Boşluk: kaydı başlat / durdur &nbsp;•&nbsp; Enter: kaydet ve sonraki cümle &nbsp;•&nbsp; Beğenmediysen Boşluk'a basıp yeniden oku<br>
+    Sessiz bir odada, mikrofona hep aynı uzaklıktan, doğal konuşma hızında okuyun.
+  </div>
+</div>
+<script src="cumleler.js"></script>
+<script>
+let klasor, sira = 0, kayitta = false, ctx, akis, isleyici, parcalar = [], sonWav = null, kayitli = new Set();
+const $ = id => document.getElementById(id);
+const ad = i => String(i + 1).padStart(4, "0") + ".wav";
+
+$("klasorBtn").onclick = async () => {
+  if (!window.showDirectoryPicker) { alert("Bu sayfayı Chrome veya Edge ile açın."); return; }
+  klasor = await showDirectoryPicker({ mode: "readwrite" });
+  for await (const [isim] of klasor.entries()) if (/^\d{4}\.wav$/.test(isim)) kayitli.add(isim);
+  akis = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: 1 } });
+  ctx = new AudioContext();
+  const kaynak = ctx.createMediaStreamSource(akis);
+  isleyici = ctx.createScriptProcessor(4096, 1, 1);
+  isleyici.onaudioprocess = e => {
+    const veri = e.inputBuffer.getChannelData(0);
+    let tepe = 0; for (const v of veri) tepe = Math.max(tepe, Math.abs(v));
+    $("seviye").value = tepe;
+    if (kayitta) parcalar.push(new Float32Array(veri));
+  };
+  kaynak.connect(isleyici); isleyici.connect(ctx.destination);
+  sira = 0; while (sira < CUMLELER.length && kayitli.has(ad(sira))) sira++;
+  $("baslangic").hidden = true; $("calisma").hidden = false; goster();
+};
+
+function goster() {
+  sonWav = null; $("kaydetBtn").disabled = true; $("oynat").hidden = true;
+  if (sira >= CUMLELER.length) { $("cumle").textContent = "Tebrikler, bütün cümleler tamamlandı! 🎉"; $("durum").textContent = kayitli.size + " / " + CUMLELER.length; return; }
+  $("cumle").textContent = CUMLELER[sira];
+  $("durum").textContent = "Cümle " + (sira + 1) + " / " + CUMLELER.length + "  —  kaydedilen: " + kayitli.size + (kayitli.has(ad(sira)) ? "  (bu cümle kayıtlı)" : "");
+}
+
+function kayitDegistir() {
+  if (sira >= CUMLELER.length) return;
+  if (!kayitta) {
+    parcalar = []; kayitta = true; ctx.resume();
+    $("kayitBtn").textContent = "■ Kaydı durdur (Boşluk)"; $("kayitBtn").classList.add("aktif");
+  } else {
+    kayitta = false;
+    $("kayitBtn").textContent = "● Yeniden kaydet (Boşluk)"; $("kayitBtn").classList.remove("aktif");
+    sonWav = wavYap(parcalar, ctx.sampleRate);
+    $("oynat").src = URL.createObjectURL(sonWav); $("oynat").hidden = false;
+    $("kaydetBtn").disabled = false;
+  }
+}
+
+function wavYap(parcalar, hiz) {
+  const n = parcalar.reduce((t, p) => t + p.length, 0);
+  const tampon = new ArrayBuffer(44 + n * 2), g = new DataView(tampon);
+  const yaz = (o, s) => { for (let i = 0; i < s.length; i++) g.setUint8(o + i, s.charCodeAt(i)); };
+  yaz(0, "RIFF"); g.setUint32(4, 36 + n * 2, true); yaz(8, "WAVEfmt "); g.setUint32(16, 16, true);
+  g.setUint16(20, 1, true); g.setUint16(22, 1, true); g.setUint32(24, hiz, true); g.setUint32(28, hiz * 2, true);
+  g.setUint16(32, 2, true); g.setUint16(34, 16, true); yaz(36, "data"); g.setUint32(40, n * 2, true);
+  let o = 44;
+  for (const p of parcalar) for (const v of p) { const k = Math.max(-1, Math.min(1, v)); g.setInt16(o, k < 0 ? k * 0x8000 : k * 0x7FFF, true); o += 2; }
+  return new Blob([tampon], { type: "audio/wav" });
+}
+
+async function kaydet() {
+  if (!sonWav || kayitta) return;
+  const dosya = await klasor.getFileHandle(ad(sira), { create: true });
+  const y = await dosya.createWritable(); await y.write(sonWav); await y.close();
+  kayitli.add(ad(sira)); sira++; $("kayitBtn").textContent = "● Kaydı başlat (Boşluk)"; goster();
+}
+
+$("kayitBtn").onclick = kayitDegistir;
+$("kaydetBtn").onclick = kaydet;
+$("atlaBtn").onclick = () => { if (!kayitta && sira < CUMLELER.length) { sira++; goster(); } };
+$("geriBtn").onclick = () => { if (!kayitta && sira > 0) { sira--; goster(); } };
+document.addEventListener("keydown", e => {
+  if ($("calisma").hidden) return;
+  if (e.code === "Space") { e.preventDefault(); kayitDegistir(); }
+  if (e.code === "Enter") { e.preventDefault(); kaydet(); }
+});
+</script>
+</body>
+</html>

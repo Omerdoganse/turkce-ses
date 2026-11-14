@@ -15,8 +15,8 @@ Yeni bir sohbette bu dosyayı Claude'a göster.
 
 ## Durum
 - [x] GitHub deposu oluşturuldu
-- [ ] Cümle listesi
-- [ ] Kayıt programı
+- [x] Cümle listesi (ilk 200 cümle, `cumleler.js`; gerekirse sona eklenir)
+- [x] Kayıt programı (`kayit.html`; mikrofonla henüz denenmedi)
 - [ ] Kurulum dosyaları
 - [ ] Kayıtlar
 - [ ] Veri seti
